@@ -65,7 +65,7 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post<MindMapResponse>('/api/generate-mindmap', data);
+      const response = await api.post<MindMapResponse>('/generate-mindmap', data);
       setMindMapData(response.data);
       setShowUserInputForm(false);
     } catch (err) {
