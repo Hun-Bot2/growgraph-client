@@ -85,7 +85,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       {showEmailForm && <EmailForm onSubmit={handleEmailSubmit} />}
-      {showUserInputForm && <UserInputForm open={showUserInputForm} onSubmit={handleUserInputSubmit} />}
+      {showUserInputForm && <UserInputForm open={showUserInputForm} onSubmit={handleUserInputSubmit} isLoading={loading} />}
       {!showEmailForm && !showUserInputForm && mindMapData && (
         <MindMap initialData={mindMapData} />
       )}
