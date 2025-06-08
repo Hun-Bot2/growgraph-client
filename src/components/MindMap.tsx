@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import ReactFlow, {
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  ReactFlow,
   Node,
   Edge,
   Controls,
@@ -11,8 +12,10 @@ import ReactFlow, {
   NodeChange,
   EdgeChange,
   MarkerType,
-} from 'reactflow';
-import 'reactflow/dist/base.css';
+  Handle,
+  Position,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import axios from 'axios';
 import { CircularProgress, Box, Typography, Button, Modal, Paper } from '@mui/material';
 
@@ -32,11 +35,36 @@ interface CareerDetail {
   description: string;
   relatedCompanies: string[];
   roleModels: string[];
+  timeToReach?: {
+    신입: string;
+    주니어: string;
+    시니어: string;
+    리드: string;
+  };
+}
+
+interface ServerResponse {
+  title: string;
+  averageSalary: string;
+  requirements: {
+    education: string[];
+    certifications: string[];
+    experience: string[];
+  };
+  description: string;
+  relatedCompanies: string[];
+  roleModels: string[];
+  timeToReach?: {
+    신입: string;
+    주니어: string;
+    시니어: string;
+    리드: string;
+  };
 }
 
 interface MindMapProps {
   initialData: {
-    nodes: Node[];
+    nodes: Node<any>[];
     edges: Edge[];
   };
 }
@@ -56,8 +84,10 @@ const nodeStyles = {
   boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
 };
 
-const CustomNode = ({ data }: { data: { label: string } }) => (
+// Custom Node Component
+const CustomNode = ({ data }: { data: NodeData }) => (
   <div style={nodeStyles}>
+    <Handle type="target" position={Position.Top} />
     <div style={{
       fontWeight: 'bold',
       fontSize: '0.95rem',
@@ -67,79 +97,155 @@ const CustomNode = ({ data }: { data: { label: string } }) => (
     }}>
       {data.label || 'No Label'}
     </div>
+    <Handle type="source" position={Position.Bottom} />
   </div>
 );
 
-// **여기서 nodeTypes를 컴포넌트 밖에서 선언**
+// Define nodeTypes outside of component
 const nodeTypes = {
   custom: CustomNode,
 };
 
 const maxChildren = 7; // 한 부모 아래 최대 자식 수
 
+const defaultCareerDetail: CareerDetail = {
+  title: '',
+  averageSalary: '',
+  requirements: {
+    education: [],
+    certifications: [],
+    experience: []
+  },
+  description: '',
+  relatedCompanies: [],
+  roleModels: []
+};
+
+// Helper function to safely extract label from node data
+const extractLabel = (nodeData: any): string => {
+  if (!nodeData) return 'No Label';
+  
+  // Case 1: data has label property
+  if (typeof nodeData === 'object' && nodeData.label && typeof nodeData.label === 'string') {
+    return nodeData.label;
+  }
+  
+  // Case 2: data is a string
+  if (typeof nodeData === 'string') {
+    return nodeData;
+  }
+  
+  // Case 3: data is an array with string first element
+  if (Array.isArray(nodeData) && nodeData.length > 0 && typeof nodeData[0] === 'string') {
+    return nodeData[0];
+  }
+  
+  // Case 4: data has alternative properties
+  if (typeof nodeData === 'object') {
+    if (nodeData.name && typeof nodeData.name === 'string') return nodeData.name;
+    if (nodeData.title && typeof nodeData.title === 'string') return nodeData.title;
+    if (nodeData.text && typeof nodeData.text === 'string') return nodeData.text;
+    if (nodeData.value && typeof nodeData.value === 'string') return nodeData.value;
+  }
+  
+  return 'No Label';
+};
+
+// Helper function to safely validate and transform server response
+const validateServerResponse = (data: any): CareerDetail => {
+  if (!data || typeof data !== 'object') {
+    return defaultCareerDetail;
+  }
+
+  return {
+    title: typeof data.title === 'string' ? data.title : '',
+    averageSalary: typeof data.averageSalary === 'string' ? data.averageSalary : '',
+    requirements: {
+      education: Array.isArray(data.requirements?.education) 
+        ? data.requirements.education.filter((item: any) => typeof item === 'string') 
+        : [],
+      certifications: Array.isArray(data.requirements?.certifications) 
+        ? data.requirements.certifications.filter((item: any) => typeof item === 'string') 
+        : [],
+      experience: Array.isArray(data.requirements?.experience) 
+        ? data.requirements.experience.filter((item: any) => typeof item === 'string') 
+        : []
+    },
+    description: typeof data.description === 'string' ? data.description : '',
+    relatedCompanies: Array.isArray(data.relatedCompanies) 
+      ? data.relatedCompanies.filter((item: any) => typeof item === 'string') 
+      : [],
+    roleModels: Array.isArray(data.roleModels) 
+      ? data.roleModels.filter((item: any) => typeof item === 'string') 
+      : [],
+    timeToReach: data.timeToReach && typeof data.timeToReach === 'object' 
+      ? data.timeToReach 
+      : undefined
+  };
+};
+
 const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
-  // 초기 노드와 엣지 데이터를 올바르게 변환
-  const initialNodes: Node[] = initialData.nodes.map(node => {
-    let label = node.id;
-    if (node.data && typeof node.data === 'object' && 'label' in node.data && node.data.label) {
-      label = node.data.label;
-    } else if (typeof node.data === 'string' && node.data) {
-      label = node.data;
-    } else if (Array.isArray(node.data) && typeof node.data[0] === 'string') {
-      label = node.data[0];
-    } else if (node.data && typeof node.data === 'object') {
-      if (node.data.name) label = node.data.name;
-      else if (node.data.title) label = node.data.title;
-      else if (node.data.text) label = node.data.text;
-      else if (node.data.value) label = node.data.value;
-    }
-    // 디버깅용 로그
-    console.log('[CLIENT] node:', node, '추출된 label:', label);
-    return {
-      ...node,
-      data: { label },
-      type: 'custom',
-    };
-  });
+  // Debug initial data
+  
 
-  const initialEdges: Edge[] = initialData.edges.map(edge => ({
-    ...edge,
-    animated: true,
-    style: { stroke: '#1565c0', strokeWidth: 3 },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#1565c0',
-      width: 32,
-      height: 32,
-      strokeWidth: 2
-    }
-  }));
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNode, setSelectedNode] = useState<Node<any> | null>(null);
   const [childCounts, setChildCounts] = useState<{ [parentId: string]: number }>({});
-  const [careerDetail, setCareerDetail] = useState<CareerDetail | null>(null);
+  const [selectedCareer, setSelectedCareer] = useState<CareerDetail | null>(null);
+  const [careerDetails, setCareerDetails] = useState<CareerDetail | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  console.log('초기 노드 라벨:', initialNodes.map(n => n.data.label));
 
-  const handleNodeClick = useCallback(async (event: React.MouseEvent, node: Node) => {
+  useEffect(() => {
+    if (!initialData) return;
+
+    const initialNodes = initialData.nodes.map((node: any, index: number) => {
+      const label = node.data?.label || `Node ${index + 1}`;
+      return {
+        id: node.id,
+        type: 'custom',
+        position: node.position,
+        data: { label },
+      };
+    });
+
+    const initialEdges = initialData.edges.map((edge: any) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: 'smoothstep',
+    }));
+
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialData]);
+
+  const handleNodeClick = useCallback(async (event: React.MouseEvent, node: Node<any>) => {
     setSelectedNode(node);
     setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
       const response = await axios.post(`${API_URL}/suggestions`, {
         nodeContent: node.data.label
       });
-      setSuggestions(response.data.suggestions);
-      setShowSuggestions(true);
+      
+      if (response.data && Array.isArray(response.data.suggestions)) {
+        setSuggestions(response.data.suggestions.filter((item: any) => typeof item === 'string'));
+        setShowSuggestions(true);
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (err) {
+      console.error('Error fetching suggestions:', err);
       setErrorMessage('추천 결과를 불러오지 못했습니다.');
+      setSuggestions([]);
     } finally {
       setIsLoading(false);
     }
@@ -148,18 +254,19 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
   // 추천 리스트에서 직업명 클릭 시 상세 정보 요청
   const handleSuggestionClick = async (label: string) => {
     setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
       const response = await axios.post(`${API_URL}/career-details`, { careerTitle: label });
-      setCareerDetail(response.data);
+      const validatedData = validateServerResponse(response.data);
+      setCareerDetails(validatedData);
       setShowDetailModal(true);
-    } catch {
-      setCareerDetail({
+    } catch (error) {
+      console.error('Error fetching career details:', error);
+      setCareerDetails({
+        ...defaultCareerDetail,
         title: label,
-        averageSalary: '',
-        requirements: { education: [], certifications: [], experience: [] },
         description: '상세 정보를 불러오지 못했습니다.',
-        relatedCompanies: [],
-        roleModels: []
       });
       setShowDetailModal(true);
     } finally {
@@ -169,25 +276,33 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
 
   // 상세 정보 모달에서 '마인드맵에 추가' 클릭 시
   const handleAddToMindMap = () => {
-    if (!selectedNode || !careerDetail) return;
+    if (!selectedNode || !careerDetails) return;
+    
+  
+    // Calculate position for new node
     const count = childCounts[selectedNode.id] || 0;
-    const angleStep = Math.PI / (maxChildren + 1); // ex: 22.5도씩
-    const baseAngle = Math.PI / 2; // 90도(아래쪽)
+    const angleStep = Math.PI / (maxChildren + 1);
+    const baseAngle = Math.PI / 2;
     const angle = baseAngle + (count - (maxChildren - 1) / 2) * angleStep;
-    const radius = 260; // 부모와 자식 간 거리
-    const newNode = {
-      id: `${selectedNode.id}-${careerDetail.title}`,
+    const radius = 260;
+    
+    // Create new node
+    const newNode: Node<any> = {
+      id: `${selectedNode.id}-${Date.now()}`,
       position: {
         x: selectedNode.position.x + Math.cos(angle) * radius,
         y: selectedNode.position.y + Math.sin(angle) * radius
       },
-      data: { label: careerDetail.title },
+      data: { label: careerDetails.title },
       type: 'custom',
     };
-    const newEdge = {
+
+    // Create new edge
+    const newEdge: Edge = {
       id: `e${selectedNode.id}-${newNode.id}`,
       source: selectedNode.id,
       target: newNode.id,
+      type: 'step',
       animated: true,
       style: { stroke: '#1565c0', strokeWidth: 3 },
       markerEnd: {
@@ -198,15 +313,25 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
         strokeWidth: 2
       }
     };
+
+    
+
+    // Update state
     setNodes((nds) => [...nds, newNode]);
     setEdges((eds) => [...eds, newEdge]);
     setChildCounts((prev) => ({
       ...prev,
       [selectedNode.id]: count + 1
     }));
+
+    // Close modals
     setShowDetailModal(false);
     setShowSuggestions(false);
   };
+
+  const onConnect = useCallback((params: any) => {
+    setEdges((eds) => addEdge(params, eds));
+  }, []);
 
   if (isLoading) {
     return (
@@ -242,15 +367,28 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={params => setEdges(eds => addEdge(params, eds))}
+        onConnect={onConnect}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
+        defaultEdgeOptions={{
+          type: 'step',
+          animated: true,
+          style: { stroke: '#1565c0', strokeWidth: 3 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#1565c0',
+            width: 32,
+            height: 32,
+            strokeWidth: 2
+          }
+        }}
       >
         <Background />
         <Controls />
       </ReactFlow>
+      
       {showSuggestions && (
         <Modal open={showSuggestions} onClose={() => setShowSuggestions(false)}>
           <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, p: 4, outline: 'none' }}>
@@ -266,34 +404,53 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
           </Paper>
         </Modal>
       )}
-      {showDetailModal && careerDetail && (
+      
+      {showDetailModal && careerDetails && (
         <Modal open={showDetailModal} onClose={() => setShowDetailModal(false)}>
           <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 620, p: 5, outline: 'none', maxHeight: '90vh', overflowY: 'auto' }}>
-            <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', textAlign: 'center', color: '#1976D2' }}>{careerDetail.title}</Typography>
+            <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', textAlign: 'center', color: '#1976D2' }}>{careerDetails.title}</Typography>
+            
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>직무 설명</Typography>
-              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: 17 }}>{careerDetail.description}</Typography>
+              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: 17 }}>{careerDetails.description}</Typography>
             </Box>
+            
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>평균 연봉</Typography>
-              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: 17 }}>{careerDetail.averageSalary}</Typography>
+              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: 17 }}>{careerDetails.averageSalary}</Typography>
             </Box>
+            
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>필요 요건</Typography>
               <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>
-                <b>학력:</b> {careerDetail.requirements.education.join(', ') || '-'}<br/>
-                <b>자격증:</b> {careerDetail.requirements.certifications.join(', ') || '-'}<br/>
-                <b>경력:</b> {careerDetail.requirements.experience.join(', ') || '-'}
+                <b>학력:</b> {careerDetails.requirements.education.join(', ') || '-'}<br/>
+                <b>자격증:</b> {careerDetails.requirements.certifications.join(', ') || '-'}<br/>
+                <b>경력:</b> {careerDetails.requirements.experience.join(', ') || '-'}
               </Typography>
             </Box>
+            
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>관련 기업</Typography>
-              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>{careerDetail.relatedCompanies.join(', ') || '-'}</Typography>
+              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>{careerDetails.relatedCompanies.join(', ') || '-'}</Typography>
             </Box>
+            
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>롤모델</Typography>
-              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>{careerDetail.roleModels.join(', ') || '-'}</Typography>
+              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>{careerDetails.roleModels.join(', ') || '-'}</Typography>
             </Box>
+
+            {careerDetails.timeToReach && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>커리어 달성 시간</Typography>
+                <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>
+                  <b>신입:</b> {careerDetails.timeToReach.신입}<br/>
+                  <b>주니어:</b> {careerDetails.timeToReach.주니어}<br/>
+                  <b>시니어:</b> {careerDetails.timeToReach.시니어}<br/>
+                  <b>리드:</b> {careerDetails.timeToReach.리드}
+                </Typography>
+              </Box>
+            )}
+            
             <Button variant="contained" color="primary" fullWidth sx={{ mt: 2, fontSize: 18, py: 1.5 }} onClick={handleAddToMindMap}>마인드맵에 추가</Button>
             <Button variant="text" color="secondary" fullWidth sx={{ mt: 1, fontSize: 16 }} onClick={() => setShowDetailModal(false)}>닫기</Button>
           </Paper>
@@ -303,4 +460,4 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
   );
 };
 
-export default MindMap; 
+export default MindMap;
