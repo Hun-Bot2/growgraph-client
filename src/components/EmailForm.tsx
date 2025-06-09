@@ -64,6 +64,7 @@ const EmailForm: React.FC<EmailFormProps> = ({ onSubmit }) => {
             background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
+            fontSize: { xs: '1.8rem', sm: '2.5rem' }
           }}
         >
           GrowGraph
@@ -75,6 +76,7 @@ const EmailForm: React.FC<EmailFormProps> = ({ onSubmit }) => {
             textAlign: 'center',
             marginBottom: 4,
             color: '#666',
+            fontSize: { xs: '0.9rem', sm: '1rem' }
           }}
         >
           커리어 마인드맵을 시작하기 위해 이메일을 입력해주세요

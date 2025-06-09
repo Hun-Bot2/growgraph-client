@@ -356,8 +356,14 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       {/* GrowGraph 로고/글씨 */}
       <Box sx={{
-        position: 'absolute', top: 24, left: 32, zIndex: 3000,
-        fontWeight: 'bold', fontSize: 36, color: '#1976D2', letterSpacing: 2,
+        position: 'absolute', 
+        top: { xs: 10, sm: 20 }, 
+        left: { xs: 16, sm: 32 }, 
+        zIndex: 3000,
+        fontWeight: 'bold', 
+        fontSize: { xs: 24, sm: 36 }, 
+        color: '#1976D2', 
+        letterSpacing: { xs: 1, sm: 2 },
         textShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
       }}>
         GrowGraph
@@ -406,23 +412,52 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
       )}
       
       {showDetailModal && careerDetails && (
-        <Modal open={showDetailModal} onClose={() => setShowDetailModal(false)}>
-          <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 620, p: 5, outline: 'none', maxHeight: '90vh', overflowY: 'auto' }}>
-            <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', textAlign: 'center', color: '#1976D2' }}>{careerDetails.title}</Typography>
+        <Modal 
+          open={showDetailModal} 
+          onClose={() => setShowDetailModal(false)}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: { xs: 2, sm: 0 }
+          }}
+        >
+          <Paper sx={{ 
+            position: 'relative',
+            width: { xs: '100%', sm: 620 },
+            maxHeight: { xs: '90vh', sm: '80vh' },
+            overflowY: 'auto',
+            p: { xs: 2, sm: 5 },
+            outline: 'none',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+          }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                mb: 3, 
+                fontWeight: 'bold', 
+                textAlign: 'center', 
+                color: '#1976D2',
+                fontSize: { xs: '1.5rem', sm: '2rem' }
+              }}
+            >
+              {careerDetails.title}
+            </Typography>
             
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>직무 설명</Typography>
-              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: 17 }}>{careerDetails.description}</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333', fontSize: { xs: '1rem', sm: '1.1rem' } }}>직무 설명</Typography>
+              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: { xs: '0.9rem', sm: '1rem' } }}>{careerDetails.description}</Typography>
             </Box>
             
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>평균 연봉</Typography>
-              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: 17 }}>{careerDetails.averageSalary}</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333', fontSize: { xs: '1rem', sm: '1.1rem' } }}>평균 연봉</Typography>
+              <Typography variant="body1" sx={{ mb: 2, color: '#444', fontSize: { xs: '0.9rem', sm: '1rem' } }}>{careerDetails.averageSalary}</Typography>
             </Box>
             
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>필요 요건</Typography>
-              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333', fontSize: { xs: '1rem', sm: '1.1rem' } }}>필요 요건</Typography>
+              <Typography variant="body2" sx={{ color: '#444', fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                 <b>학력:</b> {careerDetails.requirements.education.join(', ') || '-'}<br/>
                 <b>자격증:</b> {careerDetails.requirements.certifications.join(', ') || '-'}<br/>
                 <b>경력:</b> {careerDetails.requirements.experience.join(', ') || '-'}
@@ -430,19 +465,19 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
             </Box>
             
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>관련 기업</Typography>
-              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>{careerDetails.relatedCompanies.join(', ') || '-'}</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333', fontSize: { xs: '1rem', sm: '1.1rem' } }}>관련 기업</Typography>
+              <Typography variant="body2" sx={{ color: '#444', fontSize: { xs: '0.9rem', sm: '1rem' } }}>{careerDetails.relatedCompanies.join(', ') || '-'}</Typography>
             </Box>
             
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>롤모델</Typography>
-              <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>{careerDetails.roleModels.join(', ') || '-'}</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333', fontSize: { xs: '1rem', sm: '1.1rem' } }}>롤모델</Typography>
+              <Typography variant="body2" sx={{ color: '#444', fontSize: { xs: '0.9rem', sm: '1rem' } }}>{careerDetails.roleModels.join(', ') || '-'}</Typography>
             </Box>
 
             {careerDetails.timeToReach && (
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>커리어 달성 시간</Typography>
-                <Typography variant="body2" sx={{ color: '#444', fontSize: 16 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#333', fontSize: { xs: '1rem', sm: '1.1rem' } }}>커리어 달성 시간</Typography>
+                <Typography variant="body2" sx={{ color: '#444', fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                   <b>신입:</b> {careerDetails.timeToReach.신입}<br/>
                   <b>주니어:</b> {careerDetails.timeToReach.주니어}<br/>
                   <b>시니어:</b> {careerDetails.timeToReach.시니어}<br/>
@@ -451,8 +486,36 @@ const MindMap: React.FC<MindMapProps> = ({ initialData }) => {
               </Box>
             )}
             
-            <Button variant="contained" color="primary" fullWidth sx={{ mt: 2, fontSize: 18, py: 1.5 }} onClick={handleAddToMindMap}>마인드맵에 추가</Button>
-            <Button variant="text" color="secondary" fullWidth sx={{ mt: 1, fontSize: 16 }} onClick={() => setShowDetailModal(false)}>닫기</Button>
+            <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                fullWidth 
+                sx={{ 
+                  fontSize: { xs: '1rem', sm: '1.1rem' }, 
+                  py: { xs: 1, sm: 1.5 },
+                  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
+                  }
+                }} 
+                onClick={handleAddToMindMap}
+              >
+                마인드맵에 추가
+              </Button>
+              <Button 
+                variant="text" 
+                color="secondary" 
+                fullWidth 
+                sx={{ 
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  color: '#666'
+                }} 
+                onClick={() => setShowDetailModal(false)}
+              >
+                닫기
+              </Button>
+            </Box>
           </Paper>
         </Modal>
       )}
