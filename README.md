@@ -1,3 +1,6 @@
+# Link shut down
+2025 1학기 개발 [2025-06]
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
